@@ -2,37 +2,40 @@
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
-require 'phpmailer/src/Exeption.php';
-require 'phpmailer/src/PHPmailer.php';
-require 'phpmailer/src/SMTP.php';
+require 'vendor/autoload.php';
 
-if (isset($_POST["send"])) {
-  $mail = new PHPMailer(true);
+// Create a new PHPMailer instance
+$mail = new PHPMailer(true);
 
-  $mail->isSMTP();
-  $mail->Host = 'smtp.gmail.com';
-  $mail->SMTPAuth = true;
-  $mail->Username = 'nap.cbaylosis@gmail.com';
-  $mail->Password = 'NAPbaylosis2024';
-  $mail->SMTPSecure = 'ssl';
-  $mail->Port = 465;
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+  try {
+    //Server settings
+    $mail->isSMTP();                                            // Send using SMTP
+    $mail->Host = 'smtp.gmail.com';                     // Set the SMTP server to send through
+    $mail->SMTPAuth = true;                                   // Enable SMTP authentication
+    $mail->Username = 'nap.cbaylosis@gmail.com';                     // SMTP username
+    $mail->Password = 'NAPbaylosis2024';                         // SMTP password
+    $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;            // Enable TLS encryption; `PHPMailer::ENCRYPTION_SMTPS` encouraged
+    $mail->Port = 465;                                    // TCP port to connect to, use 465 for `PHPMailer::ENCRYPTION_SMTPS` above
 
-  $mail->setFrom('nap.cbaylosis@gmail.com');
+    //Recipients
+    $mail->setFrom($_POST['email'], $_POST['name']);
+    $mail->addAddress('nap.cbaylosis@gmail.com', 'Christian Baylosis');     // Add a recipient
 
-  $mail->addAddress($_post["email"]);
+    // Content
+    $mail->isHTML(true);                                        // Set email format to HTML
+    $mail->Subject = $_POST['subject'];
+    $mail->Body = $_POST['message'];
+    $mail->AltBody = 'This is the body in plain text for non-HTML mail clients';
 
-  $mail->isHTML(true);
-
-  $mail->Subject = $_POST["subject"];
-  $mail->Body = $_POST["message"];
-
-  $mail->send();
-
-
-  echo "
-  <script>
-  alert('Sent Successfully');
-  document.location.href = 'index.html';
-  </script>
-  ";
+    $mail->send();
+    echo 'Your message has been sent. Thank you!';
+  } catch (Exception $e) {
+    echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
+  }
+} else {
+  // Redirect back to the form (or do something else)
+  header("Location: /your-form-page.php");
+  exit();
 }
+?>
