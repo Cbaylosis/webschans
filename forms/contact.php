@@ -1,41 +1,33 @@
 <?php
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 require 'vendor/autoload.php';
 
-// Create a new PHPMailer instance
+$name = $_POST["name"];
+$email = $_POST["email"];
+$subject = $_POST["subject"];
+$message = $_POST["message"];
+
 $mail = new PHPMailer(true);
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-  try {
-    //Server settings
-    $mail->isSMTP();                                            // Send using SMTP
-    $mail->Host = 'smtp.gmail.com';                     // Set the SMTP server to send through
-    $mail->SMTPAuth = true;                                   // Enable SMTP authentication
-    $mail->Username = 'nap.cbaylosis@gmail.com';                     // SMTP username
-    $mail->Password = 'NAPbaylosis2024';                         // SMTP password
-    $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;            // Enable TLS encryption; `PHPMailer::ENCRYPTION_SMTPS` encouraged
-    $mail->Port = 465;                                    // TCP port to connect to, use 465 for `PHPMailer::ENCRYPTION_SMTPS` above
+try {
+  $mail->isSMTP();
+  $mail->SMTPAuth = true;
+  $mail->Host = 'smtp.gmail.com';
+  $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+  $mail->Port = 587;
+  $mail->Username = 'nap.cbaylosis@gmail.com'; // Replace with your Gmail address
+  $mail->Password = 'NAPbaylosis2024'; // Replace with your Gmail password
+  $mail->setFrom($email, $name);
+  $mail->addAddress('christiancbaylosis.com'); // Replace with the recipient's email address
+  $mail->isHTML(true);
+  $mail->Subject = $subject;
+  $mail->Body = $message;
 
-    //Recipients
-    $mail->setFrom($_POST['email'], $_POST['name']);
-    $mail->addAddress('nap.cbaylosis@gmail.com', 'Christian Baylosis');     // Add a recipient
-
-    // Content
-    $mail->isHTML(true);                                        // Set email format to HTML
-    $mail->Subject = $_POST['subject'];
-    $mail->Body = $_POST['message'];
-    $mail->AltBody = 'This is the body in plain text for non-HTML mail clients';
-
-    $mail->send();
-    echo 'Your message has been sent. Thank you!';
-  } catch (Exception $e) {
-    echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
-  }
-} else {
-  // Redirect back to the form (or do something else)
-  header("Location: /your-form-page.php");
-  exit();
+  $mail->send();
+  echo 'Message has been sent';
+} catch (Exception $e) {
+  echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
 }
-?>
