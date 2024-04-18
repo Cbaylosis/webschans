@@ -1,33 +1,45 @@
 <?php
+/**
+ * Requires the "PHP Email Form" library
+ * The "PHP Email Form" library is available only in the pro version of the template
+ * The library should be uploaded to: vendor/php-email-form/php-email-form.php
+ * For more info and help: https://bootstrapmade.com/php-email-form/
+ */
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
+// Path to the php-email-form.php file
+$email_form_path = '../assets/vendor/php-email-form/php-email-form.php';
 
-require 'vendor/autoload.php';
-
-$name = $_POST["name"];
-$email = $_POST["email"];
-$subject = $_POST["subject"];
-$message = $_POST["message"];
-
-$mail = new PHPMailer(true);
-
-try {
-  $mail->isSMTP();
-  $mail->SMTPAuth = true;
-  $mail->Host = 'smtp.gmail.com';
-  $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-  $mail->Port = 587;
-  $mail->Username = 'nap.cbaylosis@gmail.com'; // Replace with your Gmail address
-  $mail->Password = 'NAPbaylosis2024'; // Replace with your Gmail password
-  $mail->setFrom($email, $name);
-  $mail->addAddress('christiancbaylosis.com'); // Replace with the recipient's email address
-  $mail->isHTML(true);
-  $mail->Subject = $subject;
-  $mail->Body = $message;
-
-  $mail->send();
-  echo 'Message has been sent';
-} catch (Exception $e) {
-  echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
+// Check if the file exists
+if (file_exists($email_form_path)) {
+  require $email_form_path;
+} else {
+  die('Unable to load the "PHP Email Form" Library!');
 }
+
+// Replace contact@example.com with your real receiving email address
+$receiving_email_address = 'christiancbaylosis@gmail.com';
+
+$contact = new PHP_Email_Form;
+$contact->ajax = true;
+
+$contact->to = $receiving_email_address;
+$contact->from_name = $_POST['name'];
+$contact->from_email = $_POST['email'];
+$contact->subject = $_POST['subject'];
+
+// Uncomment below code if you want to use SMTP to send emails. You need to enter your correct SMTP credentials
+
+$contact->smtp = array(
+  'host' => 'smtp.gmail.com',
+  'username' => 'nap.cbaylosis@gmail.com',
+  'password' => 'pass',
+  'port' => '587'
+);
+
+
+$contact->add_message($_POST['name'], 'From');
+$contact->add_message($_POST['email'], 'Email');
+$contact->add_message($_POST['message'], 'Message', 10);
+
+echo $contact->send();
+?>
