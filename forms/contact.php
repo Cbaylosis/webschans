@@ -1,40 +1,77 @@
 <?php
-/**
- * Requires the "PHP Email Form" library
- * The "PHP Email Form" library is available only in the pro version of the template
- * The library should be uploaded to: vendor/php-email-form/php-email-form.php
- * For more info and help: https://bootstrapmade.com/php-email-form/
- */
+require 'vendor/autoload.php';
 
-// Replace contact@example.com with your real receiving email address
-$receiving_email_address = 'nap.cbaylosis@gmail.com';
+use Google\Client;
+use Google\Service\Gmail;
 
-if (file_exists($php_email_form = '../assets/vendor/php-email-form/php-email-form.php')) {
-  include ($php_email_form);
-} else {
-  die('Unable to load the "PHP Email Form" Library!');
+// Create a new Google client
+$client = new Client();
+$client->setApplicationName('Gmail API PHP Quickstart');
+$client->setScopes(Gmail::GMAIL_SEND);
+$client->setAuthConfig(__DIR__ . '/credentials.json');
+$client->setAccessType('offline');
+$client->setRedirectUri('http://localhost:8080');
+
+// Check if the token.json file exists
+if (file_exists('token.json')) {
+    $accessToken = json_decode(file_get_contents('token.json'), true);
+    $client->setAccessToken($accessToken);
 }
 
-$contact = new PHP_Email_Form;
-$contact->ajax = true;
+// Refresh token if expired
+if ($client->isAccessTokenExpired()) {
+    if ($client->getRefreshToken()) {
+        $client->fetchAccessTokenWithRefreshToken($client->getRefreshToken());
+    } else {
+        // Request authorization from the user
+        $authUrl = $client->createAuthUrl();
+        printf("Open the following link in your browser:\n%s\n", $authUrl);
+        print 'Enter verification code: ';
+        $handle = fopen("php://stdin", "r");
+        $code = fgets($handle);
+        fclose($handle);
+        
+        // Fetch the access token
+        $accessToken = $client->fetchAccessTokenWithAuthCode(trim($code));
+        $client->setAccessToken($accessToken);
+        file_put_contents('token.json', json_encode($client->getAccessToken()));
+    }
+}
 
-$contact->to = $receiving_email_address;
-$contact->from_name = $_POST['name'];
-$contact->from_email = $_POST['email'];
-$contact->subject = $_POST['subject'];
+// Use the Gmail service
+$service = new Gmail($client);
 
-// Uncomment below code if you want to use SMTP to send emails. You need to enter your correct SMTP credentials
-/*
-$contact->smtp = array(
-'host' => 'example.com',
-'username' => 'example',
-'password' => 'pass',
-'port' => '587'
-);
-*/
+// Check if the script is being accessed via a web server
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Get and sanitize the form data
+    $to = "nap.cbaylosis@gmail.com"; // Change to the recipient's email address
+    $name = isset($_POST['name']) ? htmlspecialchars(trim($_POST['name'])) : 'No Name';
+    $userEmail = isset($_POST['email']) ? htmlspecialchars(trim($_POST['email'])) : 'no-reply@example.com';
+    $subject = isset($_POST['subject']) ? htmlspecialchars(trim($_POST['subject'])) : 'No Subject';
+    $messageText = isset($_POST['message']) ? htmlspecialchars(trim($_POST['message'])) : 'No Message';
 
-$contact->add_message($_POST['name'], 'From', 50);
-$contact->add_message($_POST['email'], 'Email', 50);
-$contact->add_message($_POST['message'], 'Message', 255);
+    // Create the email body
+    $email = "From: $userEmail\r\n";
+    $email .= "Reply-To: $userEmail\r\n";
+    $email .= "To: $to\r\n";
+    $email .= "Subject: $subject\r\n\r\n";
+    $email .= "Message from $name:\n\n$messageText";
 
-echo $contact->send();
+    // Encode the email
+    $rawMessage = base64_encode($email);
+    $rawMessage = str_replace(array('+', '/', '='), array('-', '_', ''), $rawMessage);
+
+    $message = new Google\Service\Gmail\Message();
+    $message->setRaw($rawMessage);
+
+    try {
+        // Send the email
+        $service->users_messages->send('me', $message);
+        echo 'Email sent successfully!';
+    } catch (Exception $e) {
+        echo 'An error occurred while sending the email: ' . htmlspecialchars($e->getMessage());
+    }
+} else {
+    echo "This script can only be run via a web server.";
+}
+?>
