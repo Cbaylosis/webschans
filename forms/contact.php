@@ -25,16 +25,12 @@ if ($client->isAccessTokenExpired()) {
     } else {
         // Request authorization from the user
         $authUrl = $client->createAuthUrl();
-        printf("Open the following link in your browser:\n%s\n", $authUrl);
-        print 'Enter verification code: ';
-        $handle = fopen("php://stdin", "r");
-        $code = fgets($handle);
-        fclose($handle);
-        
-        // Fetch the access token
-        $accessToken = $client->fetchAccessTokenWithAuthCode(trim($code));
-        $client->setAccessToken($accessToken);
-        file_put_contents('token.json', json_encode($client->getAccessToken()));
+        echo "Open the following link in your browser:<br><a href='$authUrl' target='_blank'>$authUrl</a><br>";
+        echo '<form method="POST" action="">';
+        echo 'Enter verification code: <input type="text" name="code" required>';
+        echo '<input type="submit" value="Submit">';
+        echo '</form>';
+        exit; // Exit after showing the form
     }
 }
 
@@ -43,6 +39,15 @@ $service = new Gmail($client);
 
 // Check if the script is being accessed via a web server
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (isset($_POST['code'])) {
+        // Fetch the access token using the provided verification code
+        $accessToken = $client->fetchAccessTokenWithAuthCode(trim($_POST['code']));
+        $client->setAccessToken($accessToken);
+        file_put_contents('token.json', json_encode($client->getAccessToken()));
+
+        echo 'Authorization successful! You can now send emails.<br>';
+    }
+
     // Get and sanitize the form data
     $to = "nap.cbaylosis@gmail.com"; // Change to the recipient's email address
     $name = isset($_POST['name']) ? htmlspecialchars(trim($_POST['name'])) : 'No Name';
@@ -69,6 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $service->users_messages->send('me', $message);
         echo 'Email sent successfully!';
     } catch (Exception $e) {
+        // Better error handling
         echo 'An error occurred while sending the email: ' . htmlspecialchars($e->getMessage());
     }
 } else {
