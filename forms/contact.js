@@ -9,38 +9,37 @@ const app = express();
 app.use(bodyParser.urlencoded({ extended: true }));
 
 const SCOPES = ['https://www.googleapis.com/auth/gmail.send'];
-const TOKEN_PATH = path.join(__dirname, '../token.json'); // Adjust the path to your token.json
+const TOKEN_PATH = path.join(__dirname, '../token.json');
 
-const auth = new google.auth.OAuth2({
-    clientId: process.env.CLIENT_ID,
-    clientSecret: process.env.CLIENT_SECRET,
-    redirectUri: "http://localhost:8080/oauth2callback"
-});
+// Define oAuth2Client globally
+let oAuth2Client;
 
 fs.readFile(path.join(__dirname, '../credentials.json'), (err, content) => {
-    if (err) return console.error('Error loading client secret file:', err);
-    authorize(JSON.parse(content), startServer);
-});
+    if (err) {
+        console.error('Error loading client secret file:', err);
+        return;
+    }
+    const credentials = JSON.parse(content);
+    const { client_secret, client_id, redirect_uris } = credentials.web;
 
-function authorize(credentials, callback) {
-    const { client_secret, client_id, redirect_uris } = credentials.web; 
-    const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+    // Initialize oAuth2Client with credentials
+    oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
 
     fs.readFile(TOKEN_PATH, (err, token) => {
         if (err) {
-            return getAccessToken(oAuth2Client, callback);
+            return getAccessToken(oAuth2Client);
         }
         oAuth2Client.setCredentials(JSON.parse(token));
-        callback(oAuth2Client);
+        startServer(oAuth2Client);
     });
-}
+});
 
-function getAccessToken(oAuth2Client, callback) {
+function getAccessToken(oAuth2Client) {
     const authUrl = oAuth2Client.generateAuthUrl({
         access_type: 'offline',
         scope: SCOPES,
     });
-    console.log('Authorize this app by visiting this url:', authUrl);
+    console.log('Authorize this app by visiting this URL:', authUrl);
 }
 
 app.get('/oauth2callback', (req, res) => {
@@ -71,8 +70,11 @@ function startServer(auth) {
             '',
             `Message from ${name}:\n\n${messageText}`
         ].join('\r\n');
-        
-        const rawMessage = Buffer.from(email).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+        const rawMessage = Buffer.from(email).toString('base64')
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
 
         const message = {
             userId: 'me',
